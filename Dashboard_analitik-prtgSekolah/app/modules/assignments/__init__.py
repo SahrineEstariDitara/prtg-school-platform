@@ -1,0 +1,1 @@
+"""Technician assignment domain module."""
