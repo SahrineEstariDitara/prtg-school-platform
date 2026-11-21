@@ -1,0 +1,44 @@
+# Antigravity Agent Skills
+.agents/skills/
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Python & Virtualenv
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Runtime Logs & Uploads
+bot_log.txt
+*.log
+Dashboard_analitik-prtgSekolah/uploads/
+
+# Mobile / Expo (persiapan M6)
+node_modules/
+.expo/
+dist/
+
+# Legacy backup files (contain historical hardcoded credentials)
+Dashboard_analitik-prtgSekolah/*.bak_*
+Dashboard_analitik-prtgSekolah/kode backup.txt
+Dashboard_analitik-prtgSekolah/dashboard_sekolah_revisi.py
+
+# Legacy one-off patch/scratch scripts
+Dashboard_analitik-prtgSekolah/patch_dashboard.py
+Dashboard_analitik-prtgSekolah/patch_kembali.py
+Dashboard_analitik-prtgSekolah/patch_tab.py
+Dashboard_analitik-prtgSekolah/terapkan_revisi.py
+Dashboard_analitik-prtgSekolah/scratch_test.py
+
+# Runtime operational JSON snapshots (contain school IPs & live history)
+Dashboard_analitik-prtgSekolah/gangguan_sekolah.json
+Dashboard_analitik-prtgSekolah/riwayat_sekolah.json
+Dashboard_analitik-prtgSekolah/riwayat_online.json
+Dashboard_analitik-prtgSekolah/riwayat_online_v2.json
+Dashboard_analitik-prtgSekolah/rekap_online_harian.json
+Dashboard_analitik-prtgSekolah/notifikasi_prtg_state.json

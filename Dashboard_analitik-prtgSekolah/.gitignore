@@ -1,0 +1,36 @@
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Python & Testing
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Runtime Logs & Uploads
+bot_log.txt
+*.log
+uploads/
+
+# Legacy backup files (contain historical hardcoded credentials)
+*.bak_*
+kode backup.txt
+dashboard_sekolah_revisi.py
+
+# Legacy one-off patch/scratch scripts
+patch_dashboard.py
+patch_kembali.py
+patch_tab.py
+terapkan_revisi.py
+scratch_test.py
+
+# Runtime operational JSON snapshots (contain school IPs & live history)
+gangguan_sekolah.json
+riwayat_sekolah.json
+riwayat_online.json
+riwayat_online_v2.json
+rekap_online_harian.json
+notifikasi_prtg_state.json
