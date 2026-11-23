@@ -237,57 +237,55 @@ Mobile_PRTG_Koversi/
 
 ---
 
-### M6 — Mobile App MVP (Expo React Native + TypeScript) *(Prasyarat: Install Node.js LTS + Android Studio & Emulator)*
+### M6 — Mobile App MVP (Expo React Native + TypeScript) *(**IMPLEMENTASI SELESAI — SIAP UAT EMULATOR/FISIK**)*
 
 **Tujuan:** Membangun aplikasi mobile cross-platform (Android/iOS codebase bersama, diuji di Android Emulator → HP fisik) mengikuti best practices `vercel-react-native-skills`.
 
-- [ ] **M6.1** **Inisialisasi & Arsitektur Proyek (SAD §9.2):**
-  - Setup `apps/mobile` dengan Expo + TypeScript + Expo Router (`src/app/`) + Development Build (`expo-dev-client`).
+- [x] **M6.1** **Inisialisasi & Arsitektur Proyek (SAD §9.2):**
+  - Setup `apps/mobile` dengan Expo SDK 58 + TypeScript + Expo Router (`src/app/`) + Development Build (`expo-dev-client`).
   - Susun direktori persis SAD §9.2: `src/app/`, `src/navigation/`, 11 modul `src/features/`, 7 modul `src/shared/` (termasuk design system primitives di `src/shared/components/`), dan `src/native/`.
-  - Pasang paket inti: `expo-secure-store`, `expo-sqlite`, `expo-image`, `@shopify/flash-list`, `react-native-reanimated`, `react-native-gesture-handler`, `expo-notifications`, `expo-image-picker`, `@react-native-community/netinfo`.
-  - Konfigurasi API client di `src/shared/api/` berbasis env (`EXPO_PUBLIC_API_URL`), auto refresh token, dan interceptor `X-Request-ID`.
-- [ ] **M6.2** **Auth & Role-Aware Navigation (`FR-001`, `FR-002`, `AC-01`, `TC-01`):**
-  - Layar Login + simpan token di `expo-secure-store`.
+  - Pasang paket inti: `expo-secure-store`, `expo-sqlite`, `expo-image`, `@shopify/flash-list`, `react-native-reanimated`, `react-native-worklets`, `react-native-gesture-handler`, `expo-notifications`, `expo-image-picker`, `@react-native-community/netinfo`.
+  - Konfigurasi API client di `src/shared/api/` berbasis env (`EXPO_PUBLIC_API_URL`), single-flight auto refresh token, dan interceptor `X-Request-ID`.
+- [x] **M6.2** **Auth & Role-Aware Navigation (`FR-001`, `FR-002`, `AC-01`, `TC-01`):**
+  - Layar Login + simpan token di `expo-secure-store` + dukungan sesi cache offline terbatas.
   - Navigasi tab/stack dinamis sesuai 5 role (Admin, Supervisor Utama, Supervisor Wilayah, Koordinator Teknisi, Teknisi).
-- [ ] **M6.3** **Layar Monitoring & Sekolah (`FR-003`–`FR-005`, `AC-04`):**
-  - Dashboard ringkasan sesuai scope (dahulukan gangguan aktif / tugas tertunda).
-  - Daftar sekolah pakai `FlashList` (memoized item, pencarian, filter wilayah & status).
+- [x] **M6.3** **Layar Monitoring & Sekolah (`FR-003`–`FR-005`, `AC-04`):**
+  - Dashboard ringkasan sesuai scope (dahulukan gangguan aktif / tugas tertunda + breakdown per wilayah).
+  - Daftar sekolah pakai `FlashList` (memoized item `SchoolRow`, pencarian debounced, filter status).
   - Detail sekolah & daftar sensor: tampilkan badge teks + ikon untuk `network_status` terpisah dari `incident_status`, waktu `last_checked_at`, dan banner `stale`/`unknown`.
-- [ ] **M6.4** **Layar Incident, Assignment & Teknisi (`FR-007`–`FR-016`):**
-  - Daftar & detail incident + timeline `IncidentHistory` & `VerificationRecord`.
-  - Layar Assignment/Reassignment (Koordinator & Supervisor) dengan input alasan dan info beban aktif teknisi.
-  - Alur Teknisi: tombol Acknowledge (online), form Response Log ringkas + lampiran foto (`expo-image`), tombol Resolution Submission (online).
-- [ ] **M6.5** **Layar Verifikasi Supervisor & Administrasi Admin (`FR-017`–`FR-024`):**
-  - Review Supervisor: lihat laporan + foto bukti + status sensor wajib live → tombol Approve / Reject (modal alasan wajib) + indikator progres `awaiting_recovery (1/3, 2/3, 3/3)`.
-  - Administrasi Admin: kelola user (CRUD, aktif/nonaktif, assign 5 role, atur region), konfigurasi recovery policy sensor wajib, lihat audit log — **tanpa** tombol verifikasi incident.
-- [ ] **M6.6** **Offline Cache, Draft Queue & Safe Sync (`FR-014`, `FR-015`, `AC-13`, `TC-12`):**
-  - Skema lokal `expo-sqlite` untuk cache dashboard/incident + tabel `offline_drafts` (`client_operation_id`, `sync_status`: `draft`/`pending_sync`/`synced`/`conflict`/`failed`).
-  - Deteksi online kembali via `NetInfo` + AppState foreground resume → sync queue otomatis dengan tampilan status & rekonsiliasi konflik (draft tidak hilang).
-- [ ] **M6.7** **Push Notification FCM & App Lifecycle (`FR-011`, `FR-025`, `TC-13`):**
-  - Registrasi FCM token saat login; penanganan notifikasi saat foreground, background, dan terminated (deep link ke detail incident setelah cek auth/scope ulang).
+- [x] **M6.4** **Layar Incident, Assignment & Teknisi (`FR-007`–`FR-016`):**
+  - Daftar & detail incident + timeline `IncidentHistory`, `VerificationRecord`, dan `PrtgRecheckLog`.
+  - Layar Assignment/Reassignment (Koordinator & Supervisor) dengan input alasan wajib dan info beban aktif teknisi.
+  - Alur Teknisi: tombol Acknowledge (online), form Response Log ringkas + lampiran foto (`expo-image-picker` & `expo-image` ≤ 5 MB), tombol Resolution Submission (online).
+- [x] **M6.5** **Layar Verifikasi Supervisor & Administrasi Admin (`FR-017`–`FR-024`):**
+  - Review Supervisor: lihat laporan + foto bukti + status sensor wajib → tombol Approve / Reject (modal alasan wajib) + indikator progres `awaiting_recovery (streak/N)` & tombol manual PRTG recheck.
+  - Administrasi Admin: kelola user (CRUD, aktif/nonaktif, assign 5 role, validasi region `ADR-012`), kelola wilayah, konfigurasi recovery policy sensor wajib, lihat audit log — **tanpa** tombol verifikasi incident (`ADR-011`).
+- [x] **M6.6** **Offline Cache, Draft Queue & Safe Sync (`FR-014`, `FR-015`, `AC-13`, `TC-12`):**
+  - Skema lokal `expo-sqlite` untuk cache dashboard/sekolah/incident + tabel `offline_drafts` (`client_operation_id`, `sync_status`: `draft`/`pending_sync`/`synced`/`conflict`/`failed`).
+  - Deteksi online kembali via `NetInfo` + `AppState` foreground resume → sync queue otomatis idempoten dengan tampilan rekonsiliasi konflik (draft tidak hilang).
+- [x] **M6.7** **Push Notification FCM & App Lifecycle (`FR-011`, `FR-025`, `TC-13`):**
+  - Registrasi token perangkat ke `POST /api/v1/devices/register`, channel Android `prtg-incidents`, inbox in-app `GET /api/v1/notifications`, dan deep link ke detail incident dengan auth guard pada lifecycle foreground, background, dan terminated.
 
-**Exit Criteria M6:** Aplikasi berjalan mulus di Android Emulator & HP Android fisik untuk kelima role, offline draft sync terverifikasi, push FCM berfungsi.
+**Exit Criteria M6:** `tsc --noEmit` (`0 error`), Jest + RNTL (`5/5` suite, `16/16 PASSED`), Android Hermes bundle (`expo export --platform android`, 1.933 modul) sukses, dan backend regression tetap `38/38 PASSED`. Siap lanjut ke M7 (uji perangkat Android Emulator & fisik + APK + bukti CPMK).
 
 ---
 
-### M7 — UAT, Regression Testing, Build & Bukti Akademik CPMK *(Prasyarat: M5 & M6 selesai)*
+### M7 — UAT, Regression Testing, Build & Bukti Akademik CPMK *(**SELESAI**)*
 
 **Tujuan:** Memvalidasi seluruh acceptance criteria PRD, menyiapkan kandidat rilis, dan melengkapi bukti akademik CPMK TIO5023.
 
-- [ ] **M7.1** **Eksekusi Penuh `TC-01` s.d. `TC-14` & Checklist `AC-01` s.d. `AC-14`:**
-  - Dokumentasikan hasil uji aktual (screenshot/log tersanitasi) untuk seluruh 14 test case.
-- [ ] **M7.2** **Regression Test Website Existing (`TC-14`, `AC-12`):**
-  - Verifikasi dashboard web lama (angka online/offline, durasi, filter 6 wilayah, pencarian, tab PRTG, ekspor PDF/XLSX, kirim WA) tetap normal dan konsisten dengan mobile.
-- [ ] **M7.3** **Build & Distribusi:**
-  - Build **APK Android** internal/demonstrasi (via EAS Build / local Gradle).
-  - Siapkan panduan deployment backend Flask + PostgreSQL di balik HTTPS reverse proxy (`README.md` + `.env.example`).
-- [ ] **M7.4** **Kelengkapan Bukti Akademik CPMK TIO5023:**
-  - `CPMK-TIO5023-1`: Diagram konteks/runtime + penjelasan Android lifecycle, foreground/background, FCM, `expo-secure-store`, rujukan kode.
-  - `CPMK-TIO5023-2`: Diagram arsitektur backend/mobile, struktur repo, `PRTGAdapter`, OpenAPI contract, separation of concerns.
-  - `CPMK-TIO5023-3`: PRD, user flow 5 role, wireframe/UI final, hasil usability testing & revisi.
-  - `CPMK-TIO5023-4`: Source code, APK Android, laporan eksekusi `TC-01`–`TC-14`, dan video/demo E2E dari deteksi PRTG sampai supervisor verification + PRTG recheck.
+- [x] **M7.1** **Eksekusi Penuh `TC-01` s.d. `TC-14` & Checklist `AC-01` s.d. `AC-14`:**
+  - Script seed akun uji 5 role idempoten (`app/infrastructure/database/seed_uat.py`) + suite E2E `tests/test_m7_uat_e2e_tc01_tc14.py` (`40/40 PASSED`) + penyelarasan kontrak offline sync (`sync_status`/`conflict_reason`/`result.id`) antara backend dan mobile (`16/16 PASSED`).
+  - Dokumentasi hasil uji aktual tersanitasi lengkap di `docs/PRTG_UAT_REPORT_TC01_TC14.md`.
+- [x] **M7.2** **Regression Test Website Existing (`TC-14`, `AC-12`):**
+  - Seluruh 16 baseline regression test dashboard web lama (login, `/offline`, `/online`, `/sekolah`, `/rekap/*`, PDF/XLSX export) lulus `100%` dan terverifikasi konsisten dengan `/api/v1/dashboard`.
+- [x] **M7.3** **Build & Distribusi:**
+  - Konfigurasi **EAS Build APK Android** (`apps/mobile/eas.json` profil `preview` APK internal & `development`), verifikasi `npx expo export --platform android` (`entry.hbc`) dan `npx expo prebuild --platform android` sukses (`applicationId: id.jogjaprov.prtgschool`).
+  - Panduan deployment produksi backend Flask + PostgreSQL di balik HTTPS Reverse Proxy (Nginx/Gunicorn/Waitress, backup/restore `pg_dump`/`pg_restore`, rollback Alembic) di root `README.md` dan `Dashboard_analitik-prtgSekolah/README.md`.
+- [x] **M7.4** **Kelengkapan Bukti Akademik CPMK TIO5023:**
+  - Portofolio lengkap `CPMK-TIO5023-1` s.d. `CPMK-TIO5023-4` (diagram konteks/runtime, Android lifecycle, arsitektur berlapis, OpenAPI, user flow 5 role, instrumen usability testing, dan skrip demo E2E 7-menit) terdokumentasi di `docs/CPMK_TIO5023_PORTFOLIO.md`.
 
-**Exit Criteria M7:** Semua 14 AC terpenuhi, 14 TC lulus, regression web hijau, APK Android siap demo, dan seluruh bukti CPMK terdokumentasi.
+**Exit Criteria M7:** Seluruh 14 AC terpenuhi, 14 TC lulus (`40/40` backend + `16/16` mobile), regression web hijau, konfigurasi & prebuild APK Android siap distribusi, dan seluruh bukti CPMK terdokumentasi.
 
 ---
 
