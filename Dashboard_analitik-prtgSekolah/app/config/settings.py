@@ -147,6 +147,7 @@ class Settings:
     fcm_enabled: bool
     fcm_service_account_path: str
     enable_operational_worker: bool
+    api_cors_origins: list[str]
 
     def secret_values(self) -> tuple[str, ...]:
         """Return non-empty secret values to redact from logs."""
@@ -208,6 +209,7 @@ def _build_settings() -> Settings:
         fcm_enabled=_env_bool("FCM_ENABLED", False),
         fcm_service_account_path=_env_str("FCM_SERVICE_ACCOUNT_PATH", ""),
         enable_operational_worker=_env_bool("ENABLE_OPERATIONAL_WORKER", False),
+        api_cors_origins=_env_csv_list("API_CORS_ORIGINS", ()),
     )
 
 

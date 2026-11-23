@@ -82,6 +82,7 @@ def test_env_example_keys_are_recognized_by_settings(tmp_path: Path, monkeypatch
         "FCM_ENABLED",
         "FCM_SERVICE_ACCOUNT_PATH",
         "ENABLE_OPERATIONAL_WORKER",
+        "API_CORS_ORIGINS",
     }
     assert set(keys) == expected_keys
 

@@ -18,10 +18,14 @@ bot_log.txt
 *.log
 Dashboard_analitik-prtgSekolah/uploads/
 
-# Mobile / Expo (persiapan M6)
+# Mobile / Expo (M6)
 node_modules/
 .expo/
 dist/
+apps/mobile/google-services.json
+apps/mobile/GoogleService-Info.plist
+apps/mobile/android/
+apps/mobile/ios/
 
 # Legacy backup files (contain historical hardcoded credentials)
 Dashboard_analitik-prtgSekolah/*.bak_*
