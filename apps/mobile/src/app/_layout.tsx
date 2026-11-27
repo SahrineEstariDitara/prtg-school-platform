@@ -1,7 +1,6 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '../features/auth/AuthContext';
@@ -11,7 +10,7 @@ import { colors } from '../shared/theme/tokens';
 
 export default function RootLayout() {
   return (
-    <GestureHandlerRootView style={styles.root}>
+    <View style={styles.root}>
       <SafeAreaProvider>
         <AuthProvider>
           <SyncProvider>
@@ -52,7 +51,7 @@ export default function RootLayout() {
           </SyncProvider>
         </AuthProvider>
       </SafeAreaProvider>
-    </GestureHandlerRootView>
+    </View>
   );
 }
 

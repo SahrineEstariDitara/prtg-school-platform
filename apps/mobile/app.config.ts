@@ -1,7 +1,30 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { ExpoConfig, ConfigContext } from 'expo/config';
-import { withAndroidManifest } from 'expo/config-plugins';
+import { withAndroidManifest, withAppBuildGradle, withProjectBuildGradle } from 'expo/config-plugins';
+
+const WIN_CMAKE_SNIPPET = `
+// PRTG_WIN_CMAKE_SHORT_PATH: Prevent Windows 260-char MAX_PATH failures in CMake/Ninja
+if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
+  def driveRoot = rootProject.rootDir.absolutePath.substring(0, 3)
+  def rxStagingBase = new File(driveRoot, "c")
+  subprojects { subproject ->
+    def shortId = Integer.toString(Math.abs(subproject.name.hashCode()) % 1296, 36)
+    subproject.plugins.withId("com.android.library") {
+      def androidExt = subproject.extensions.findByName("android")
+      if (androidExt != null) {
+        androidExt.externalNativeBuild {
+          cmake {
+            if (buildStagingDirectory == null) {
+              buildStagingDirectory = new File(rxStagingBase, shortId)
+            }
+          }
+        }
+      }
+    }
+  }
+}
+`;
 
 export default ({ config }: ConfigContext): ExpoConfig => {
   const googleServicesPath = path.resolve(__dirname, 'google-services.json');
@@ -66,10 +89,27 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
   };
 
-  return withAndroidManifest(baseConfig, (mod) => {
+  const withManifest = withAndroidManifest(baseConfig, (mod) => {
     const app = mod.modResults.manifest.application?.[0];
     if (app) {
       app.$['android:usesCleartextTraffic'] = allowCleartext ? 'true' : 'false';
+    }
+    return mod;
+  });
+
+  const withRootGradle = withProjectBuildGradle(withManifest, (mod) => {
+    if (!mod.modResults.contents.includes('PRTG_WIN_CMAKE_SHORT_PATH')) {
+      mod.modResults.contents = `${mod.modResults.contents.trimEnd()}\n${WIN_CMAKE_SNIPPET}`;
+    }
+    return mod;
+  });
+
+  return withAppBuildGradle(withRootGradle, (mod) => {
+    if (!mod.modResults.contents.includes('PRTG_APP_CMAKE_SHORT_PATH')) {
+      mod.modResults.contents = mod.modResults.contents.replace(
+        /android\s*\{/,
+        `android {\n    // PRTG_APP_CMAKE_SHORT_PATH\n    if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {\n        externalNativeBuild {\n            cmake {\n                buildStagingDirectory = new File(rootProject.rootDir.absolutePath.substring(0, 3), "c/a")\n            }\n        }\n        defaultConfig {\n            externalNativeBuild {\n                cmake {\n                    arguments "-DCMAKE_OBJECT_PATH_MAX=230"\n                }\n            }\n        }\n    }`,
+      );
     }
     return mod;
   });

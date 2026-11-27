@@ -190,3 +190,4 @@ npx expo export --platform android
 - [docs/PRTG_M1_AUDIT_REPORT.md](docs/PRTG_M1_AUDIT_REPORT.md) — Hasil audit 23 rute web & baseline live PRTG
 - [docs/PRTG_UAT_REPORT_TC01_TC14.md](docs/PRTG_UAT_REPORT_TC01_TC14.md) — Laporan UAT `TC-01`–`TC-14` & matriks `AC-01`–`AC-14`
 - [docs/CPMK_TIO5023_PORTFOLIO.md](docs/CPMK_TIO5023_PORTFOLIO.md) — Paket bukti akademik `CPMK-TIO5023-1` s.d. `4`
+- [docs/PRTG_PANDUAN_MENJALANKAN_APLIKASI.md](docs/PRTG_PANDUAN_MENJALANKAN_APLIKASI.md) — Panduan lengkap menjalankan Backend, Android Studio Emulator, Build APK, Testing 5 Role, & Troubleshooting Windows
