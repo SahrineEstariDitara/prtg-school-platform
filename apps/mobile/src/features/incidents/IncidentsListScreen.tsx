@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { incidentsApi } from '../../shared/api/endpoints';
 import { getCacheEntry, setCacheEntry } from '../../shared/storage/localDb';
+import { mergeUniqueById } from '../../shared/hooks/listHelpers';
 import { useAuth } from '../auth/AuthContext';
 import { useSync } from '../offline-sync/SyncContext';
 import {
@@ -78,12 +79,18 @@ export function IncidentsListScreen() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const fetchingMoreRef = useRef(false);
 
   const fetchIncidents = useCallback(
     async (nextPage: number, replace: boolean) => {
       if (replace && nextPage === 1) {
         setRefreshing(true);
+      } else if (!replace && nextPage > 1) {
+        if (fetchingMoreRef.current) return;
+        fetchingMoreRef.current = true;
+        setLoadingMore(true);
       }
       setErrorMsg(null);
       try {
@@ -95,7 +102,7 @@ export function IncidentsListScreen() {
         });
         setTotal(res.pagination.total);
         setPage(nextPage);
-        setItems((prev) => (replace ? res.items : [...prev, ...res.items]));
+        setItems((prev) => (replace ? res.items : mergeUniqueById(prev, res.items)));
         if (nextPage === 1 && !statusFilter) {
           await setCacheEntry(CACHE_KEY_INCIDENTS, res.items);
         }
@@ -110,8 +117,10 @@ export function IncidentsListScreen() {
           }
         }
       } finally {
+        fetchingMoreRef.current = false;
         setLoading(false);
         setRefreshing(false);
+        setLoadingMore(false);
       }
     },
     [statusFilter, assignedToMe],
@@ -130,10 +139,10 @@ export function IncidentsListScreen() {
   );
 
   const handleLoadMore = useCallback(() => {
-    if (!loading && !refreshing && items.length < total) {
+    if (!loading && !refreshing && !loadingMore && !fetchingMoreRef.current && items.length < total) {
       fetchIncidents(page + 1, false);
     }
-  }, [loading, refreshing, items.length, total, page, fetchIncidents]);
+  }, [loading, refreshing, loadingMore, items.length, total, page, fetchIncidents]);
 
   const renderItem = useCallback(
     ({ item }: { item: IncidentSummary }) => (
@@ -195,6 +204,9 @@ export function IncidentsListScreen() {
           onRefresh={() => fetchIncidents(1, true)}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.4}
+          ListFooterComponent={
+            loadingMore ? <ActivityIndicator style={styles.footerLoader} color={colors.primary} /> : null
+          }
           ListEmptyComponent={
             <EmptyState
               icon="checkmark-done-outline"
@@ -252,5 +264,8 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.xs,
     marginTop: 4,
+  },
+  footerLoader: {
+    paddingVertical: spacing.md,
   },
 });

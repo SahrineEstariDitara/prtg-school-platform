@@ -4090,6 +4090,9 @@ TEMPLATE = """
                 <div class="gs-meta-stats">
                     <span class="gs-stat-pill offline"><i class="gs-dot merah"></i>Offline: <b>{{ total_offline }}</b></span>
                     <span class="gs-stat-pill">Total: <b>{{ total_offline }}</b></span>
+                    {% if total_incident_aktif_db is not none %}
+                    <span class="gs-stat-pill">Incident DB Aktif: <b>{{ total_incident_aktif_db }}</b></span>
+                    {% endif %}
                 </div>
             </div>
             
@@ -5321,6 +5324,9 @@ ONLINE_TEMPLATE = """
                 <div class="gs-meta-stats">
                     <span class="gs-stat-pill online"><i class="gs-dot hijau"></i>Online: <b>{{ total_online }}</b></span>
                     <span class="gs-stat-pill">Total: <b>{{ total_online }}</b></span>
+                    {% if total_incident_aktif_db is not none %}
+                    <span class="gs-stat-pill">Incident DB Aktif: <b>{{ total_incident_aktif_db }}</b></span>
+                    {% endif %}
                 </div>
             </div>
 
@@ -6242,6 +6248,7 @@ def index():
         TEMPLATE,
         total_offline_global=len(details_semua),
         total_online_global=total_online,
+        total_incident_aktif_db=_ringkasan_incident_aktif_db(),
         daftar_global_json=json.dumps(daftar_global),
         shared_css=SHARED_CSS,
         prtg_server=PRTG_SERVER,
@@ -6388,6 +6395,7 @@ def dashboard_online():
         ONLINE_TEMPLATE,
         total_offline_global=total_offline,
         total_online_global=len(details_online_semua),
+        total_incident_aktif_db=_ringkasan_incident_aktif_db(),
         daftar_global_json=json.dumps(daftar_global),
         shared_css=SHARED_CSS,
         prtg_server=PRTG_SERVER,
@@ -7897,6 +7905,12 @@ def _ringkasan_incident_aktif_db():
         return int(total_aktif or 0)
     except Exception:
         return None
+
+
+if settings.enable_wsgi_embedded_worker and __name__ != "__main__":
+    from app.infrastructure.workers import start_operational_worker
+
+    start_operational_worker(app)
 
 
 if __name__ == "__main__":

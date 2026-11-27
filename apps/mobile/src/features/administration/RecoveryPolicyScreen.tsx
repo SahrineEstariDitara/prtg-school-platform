@@ -17,6 +17,42 @@ import {
 import { colors, spacing } from '../../shared/theme/tokens';
 import type { PrtgSensorItem } from '../../shared/types/domain';
 
+interface PolicySensorRowProps {
+  sensor: PrtgSensorItem;
+  selected: boolean;
+  onToggle: (sensorId: number) => void;
+}
+
+const PolicySensorRow = React.memo(function PolicySensorRow({
+  sensor,
+  selected,
+  onToggle,
+}: PolicySensorRowProps) {
+  const handlePress = useCallback(() => onToggle(sensor.id), [onToggle, sensor.id]);
+
+  return (
+    <Card
+      onPress={handlePress}
+      style={selected ? styles.sensorCardSelected : styles.sensorCard}
+    >
+      <View style={styles.rowBetween}>
+        <AppText variant="bodyBold" style={styles.flexOne}>
+          {sensor.sensor_name}
+        </AppText>
+        <ChipFilter
+          label={selected ? 'Wajib' : 'Pilih'}
+          selected={selected}
+          onPress={handlePress}
+        />
+      </View>
+      <AppText variant="caption" color={colors.textMuted}>
+        Device: {sensor.device_name ?? '-'} • PRTG ID: {sensor.prtg_sensor_id}
+      </AppText>
+      <NetworkStatusBadge status={sensor.normalized_status} />
+    </Card>
+  );
+});
+
 export function RecoveryPolicyScreen({ schoolId }: { schoolId: number }) {
   const router = useRouter();
   const [schoolName, setSchoolName] = useState('');
@@ -52,11 +88,11 @@ export function RecoveryPolicyScreen({ schoolId }: { schoolId: number }) {
     loadData();
   }, [loadData]);
 
-  const toggleSensor = (sensorId: number) => {
+  const toggleSensor = useCallback((sensorId: number) => {
     setSelectedSensorIds((prev) =>
       prev.includes(sensorId) ? prev.filter((id) => id !== sensorId) : [...prev, sensorId],
     );
-  };
+  }, []);
 
   const handleSave = async () => {
     if (selectedSensorIds.length === 0) {
@@ -117,31 +153,14 @@ export function RecoveryPolicyScreen({ schoolId }: { schoolId: number }) {
         Pilih Sensor Wajib ({selectedSensorIds.length} / {sensors.length} dipilih)
       </AppText>
 
-      {sensors.map((sn) => {
-        const selected = selectedSensorIds.includes(sn.id);
-        return (
-          <Card
-            key={sn.id}
-            onPress={() => toggleSensor(sn.id)}
-            style={[styles.sensorCard, selected ? styles.selectedCard : null]}
-          >
-            <View style={styles.rowBetween}>
-              <AppText variant="bodyBold" style={styles.flexOne}>
-                {sn.sensor_name}
-              </AppText>
-              <ChipFilter
-                label={selected ? 'Wajib' : 'Pilih'}
-                selected={selected}
-                onPress={() => toggleSensor(sn.id)}
-              />
-            </View>
-            <AppText variant="caption" color={colors.textMuted}>
-              Device: {sn.device_name ?? '-'} • PRTG ID: {sn.prtg_sensor_id}
-            </AppText>
-            <NetworkStatusBadge status={sn.normalized_status} />
-          </Card>
-        );
-      })}
+      {sensors.map((sn) => (
+        <PolicySensorRow
+          key={sn.id}
+          sensor={sn}
+          selected={selectedSensorIds.includes(sn.id)}
+          onToggle={toggleSensor}
+        />
+      ))}
 
       <AppButton
         label="Simpan Recovery Policy"
@@ -161,7 +180,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.xs,
   },
-  selectedCard: {
+  sensorCardSelected: {
+    padding: spacing.md,
+    gap: spacing.xs,
     borderColor: colors.primary,
     borderWidth: 2,
     backgroundColor: colors.primarySoft,

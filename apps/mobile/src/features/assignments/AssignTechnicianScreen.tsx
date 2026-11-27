@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { incidentsApi } from '../../shared/api/endpoints';
 import { ApiClientError } from '../../shared/api/client';
 import { validateMandatoryReason } from '../../shared/validation/validators';
@@ -33,7 +34,7 @@ const TechnicianRow = React.memo(function TechnicianRow({
   return (
     <Card
       onPress={handlePress}
-      style={[styles.techCard, selected ? styles.techSelected : null]}
+      style={selected ? styles.techCardSelected : styles.techCard}
     >
       <View style={styles.rowBetween}>
         <AppText variant="bodyBold" style={styles.flexOne}>
@@ -62,6 +63,7 @@ export function AssignTechnicianScreen({
   regionId?: number;
 }) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [techs, setTechs] = useState<TechnicianWorkloadItem[]>([]);
   const [selectedTechId, setSelectedTechId] = useState<number | null>(null);
   const [reason, setReason] = useState('');
@@ -162,7 +164,7 @@ export function AssignTechnicianScreen({
         }
       />
 
-      <View style={styles.footerBar}>
+      <View style={[styles.footerBar, { paddingBottom: Math.max(insets.bottom, spacing.lg) }]}>
         <AppButton
           label="Simpan Penugasan"
           icon="checkmark-circle"
@@ -196,7 +198,10 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: 4,
   },
-  techSelected: {
+  techCardSelected: {
+    marginBottom: spacing.sm,
+    padding: spacing.md,
+    gap: 4,
     borderColor: colors.primary,
     borderWidth: 2,
     backgroundColor: colors.primarySoft,

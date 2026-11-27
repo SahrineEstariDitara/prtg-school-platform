@@ -95,10 +95,12 @@ Copy-Item .env.example .env
 #### Jalur A — EAS Build Cloud (Paling Praktis, Tidak Butuh JDK Lokal)
 ```powershell
 cd apps/mobile
+# Sesuaikan EXPO_PUBLIC_API_URL pada profil preview/production di eas.json terlebih dahulu
 npx eas-cli login
+npx eas-cli init
 npx eas-cli build --platform android --profile preview
 ```
-Profil `preview` pada `apps/mobile/eas.json` dikonfigurasi dengan `"buildType": "apk"` dan `"distribution": "internal"` untuk menghasilkan file `.apk` siap pasang di perangkat Android fisik.
+Profil `preview` pada `apps/mobile/eas.json` dikonfigurasi dengan `"buildType": "apk"` dan `"distribution": "internal"` untuk menghasilkan file `.apk` siap pasang di perangkat Android fisik. `app.config.ts` otomatis mengizinkan HTTP cleartext hanya bila `EXPO_PUBLIC_API_URL` memakai `http://`, dan otomatis menonaktifkannya (`false`) saat memakai `https://` produksi.
 
 #### Jalur B — Build APK Lokal (Android SDK + JDK 17/21)
 ```powershell
@@ -120,13 +122,15 @@ cd android
 ## 3. Panduan Deployment Produksi Shared Backend (HTTPS Reverse Proxy)
 
 Sesuai `SAD §10.1`–`§10.4` (`NFR-01`):
-1. **Jangan jalankan server dev Flask langsung di produksi.** Gunakan WSGI server seperti **Gunicorn** (Linux) atau **Waitress** (Windows):
-   ```bash
-   # Linux (Gunicorn + 4 workers)
-   gunicorn -w 4 -b 127.0.0.1:5001 "dashboard_sekolah:app"
+1. **Jangan jalankan server dev Flask langsung di produksi.** Gunakan WSGI server (`wsgi:app`) dan jalankan worker operasional terpisah agar sinkronisasi PRTG & recheck recovery berjalan sekali (tidak terduplikasi antar-worker web):
+   ```powershell
+   # Linux (Gunicorn + 4 workers web + 1 worker operasional terpisah)
+   gunicorn -w 4 -b 127.0.0.1:5001 "wsgi:app"
+   python -m app.infrastructure.workers
 
-   # Windows (Waitress)
-   waitress-serve --host=127.0.0.1 --port=5001 dashboard_sekolah:app
+   # Windows (Waitress web + worker terpisah, atau set ENABLE_WSGI_EMBEDDED_WORKER=true)
+   waitress-serve --host=127.0.0.1 --port=5001 wsgi:app
+   python -m app.infrastructure.workers
    ```
 2. **Pasang HTTPS Reverse Proxy (Nginx / Caddy)** di depan port `5001` dengan sertifikat TLS valid:
    ```nginx

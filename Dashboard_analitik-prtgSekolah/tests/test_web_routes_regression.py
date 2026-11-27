@@ -105,3 +105,21 @@ def test_wa_preview_and_rekap_pages(logged_in_client):
 
     rekap_on = logged_in_client.get("/rekap/online")
     assert rekap_on.status_code == 200
+
+
+def test_web_dashboards_render_db_active_incident_pill_and_wsgi_entrypoint(
+    logged_in_client, monkeypatch
+):
+    """FR-027 + WSGI readiness: web dashboard displays DB active incidents when available and wsgi.app exists."""
+    monkeypatch.setattr(ds, "_ringkasan_incident_aktif_db", lambda: 7)
+    off = logged_in_client.get("/offline")
+    assert off.status_code == 200
+    assert "Incident DB Aktif: <b>7</b>" in off.get_data(as_text=True)
+
+    on = logged_in_client.get("/online")
+    assert on.status_code == 200
+    assert "Incident DB Aktif: <b>7</b>" in on.get_data(as_text=True)
+
+    import wsgi
+
+    assert wsgi.app is ds.app

@@ -1,12 +1,19 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { ExpoConfig, ConfigContext } from 'expo/config';
+import { withAndroidManifest } from 'expo/config-plugins';
 
 export default ({ config }: ConfigContext): ExpoConfig => {
   const googleServicesPath = path.resolve(__dirname, 'google-services.json');
   const hasGoogleServices = fs.existsSync(googleServicesPath);
+  const apiBaseUrl = (
+    process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:5001/api/v1'
+  ).trim();
+  const allowCleartext =
+    process.env.EXPO_PUBLIC_ALLOW_CLEARTEXT === 'true' ||
+    apiBaseUrl.toLowerCase().startsWith('http://');
 
-  return {
+  const baseConfig: ExpoConfig = {
     ...config,
     name: 'PRTG School Mobile',
     slug: 'prtg-school-mobile',
@@ -21,6 +28,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     android: {
       package: 'id.jogjaprov.prtgschool',
+      blockedPermissions: ['android.permission.RECORD_AUDIO'],
       adaptiveIcon: {
         foregroundImage: './assets/android-icon-foreground.png',
         backgroundColor: '#1D4ED8',
@@ -37,6 +45,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         {
           photosPermission: 'Izinkan akses galeri untuk melampirkan foto bukti penanganan incident.',
           cameraPermission: 'Izinkan akses kamera untuk mengambil foto bukti penanganan di lapangan.',
+          microphonePermission: false,
         },
       ],
       [
@@ -51,8 +60,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       typedRoutes: true,
     },
     extra: {
-      apiBaseUrl: process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:5001/api/v1',
+      apiBaseUrl,
+      allowCleartext,
       hasGoogleServices,
     },
   };
+
+  return withAndroidManifest(baseConfig, (mod) => {
+    const app = mod.modResults.manifest.application?.[0];
+    if (app) {
+      app.$['android:usesCleartextTraffic'] = allowCleartext ? 'true' : 'false';
+    }
+    return mod;
+  });
 };

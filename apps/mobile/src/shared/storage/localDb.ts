@@ -18,6 +18,7 @@ async function getDb(): Promise<SQLite.SQLiteDatabase> {
         );
         CREATE TABLE IF NOT EXISTS offline_drafts (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL DEFAULT 0,
           client_operation_id TEXT UNIQUE NOT NULL,
           incident_id INTEGER NOT NULL,
           school_name TEXT NOT NULL,
@@ -35,6 +36,17 @@ async function getDb(): Promise<SQLite.SQLiteDatabase> {
         CREATE INDEX IF NOT EXISTS idx_offline_drafts_status ON offline_drafts(sync_status);
         CREATE INDEX IF NOT EXISTS idx_offline_drafts_incident ON offline_drafts(incident_id);
       `);
+
+      // Migrasi aman untuk database SQLite perangkat yang dibuat sebelum kolom user_id ditambahkan
+      const cols = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(offline_drafts)`);
+      if (!cols.some((c) => c.name === 'user_id')) {
+        await db.execAsync(
+          `ALTER TABLE offline_drafts ADD COLUMN user_id INTEGER NOT NULL DEFAULT 0`,
+        );
+      }
+      await db.execAsync(
+        `CREATE INDEX IF NOT EXISTS idx_offline_drafts_user ON offline_drafts(user_id)`,
+      );
       return db;
     })();
   }
@@ -77,6 +89,7 @@ export async function clearAllCache(): Promise<void> {
 }
 
 export interface CreateOfflineDraftInput {
+  userId: number;
   clientOperationId: string;
   incidentId: number;
   schoolName: string;
@@ -96,9 +109,10 @@ export async function insertOfflineDraft(
   const status: SyncStatus = input.syncStatus ?? 'pending_sync';
   const result = await db.runAsync(
     `INSERT INTO offline_drafts (
-      client_operation_id, incident_id, school_name, action_summary, result_notes,
+      user_id, client_operation_id, incident_id, school_name, action_summary, result_notes,
       attachment_uri, attachment_mime, attachment_name, sync_status, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    input.userId,
     input.clientOperationId,
     input.incidentId,
     input.schoolName,
@@ -114,6 +128,7 @@ export async function insertOfflineDraft(
 
   return {
     id: result.lastInsertRowId,
+    user_id: input.userId,
     client_operation_id: input.clientOperationId,
     incident_id: input.incidentId,
     school_name: input.schoolName,
@@ -130,19 +145,40 @@ export async function insertOfflineDraft(
   };
 }
 
-export async function listOfflineDrafts(incidentId?: number): Promise<OfflineDraftRecord[]> {
+export async function listOfflineDrafts(
+  incidentId?: number,
+  userId?: number,
+): Promise<OfflineDraftRecord[]> {
   const db = await getDb();
+  const clauses: string[] = [];
+  const params: number[] = [];
+
   if (typeof incidentId === 'number') {
-    return db.getAllAsync<OfflineDraftRecord>(
-      `SELECT * FROM offline_drafts WHERE incident_id = ? ORDER BY id DESC`,
-      incidentId,
-    );
+    clauses.push('incident_id = ?');
+    params.push(incidentId);
   }
-  return db.getAllAsync<OfflineDraftRecord>(`SELECT * FROM offline_drafts ORDER BY id DESC`);
+  if (typeof userId === 'number') {
+    clauses.push('(user_id = ? OR user_id = 0)');
+    params.push(userId);
+  }
+
+  const whereSql = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
+  return db.getAllAsync<OfflineDraftRecord>(
+    `SELECT * FROM offline_drafts ${whereSql} ORDER BY id DESC`,
+    ...params,
+  );
 }
 
-export async function listPendingOfflineDrafts(): Promise<OfflineDraftRecord[]> {
+export async function listPendingOfflineDrafts(userId?: number): Promise<OfflineDraftRecord[]> {
   const db = await getDb();
+  if (typeof userId === 'number') {
+    return db.getAllAsync<OfflineDraftRecord>(
+      `SELECT * FROM offline_drafts
+       WHERE sync_status IN ('draft', 'pending_sync', 'failed') AND (user_id = ? OR user_id = 0)
+       ORDER BY id ASC`,
+      userId,
+    );
+  }
   return db.getAllAsync<OfflineDraftRecord>(
     `SELECT * FROM offline_drafts WHERE sync_status IN ('draft', 'pending_sync', 'failed') ORDER BY id ASC`,
   );

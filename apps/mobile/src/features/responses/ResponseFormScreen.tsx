@@ -43,42 +43,54 @@ export function ResponseFormScreen({
   const [submitting, setSubmitting] = useState(false);
 
   const pickImage = async (fromCamera: boolean) => {
-    const perm = fromCamera
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    try {
+      const perm = fromCamera
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-    if (!perm.granted) {
-      Alert.alert('Izin Ditolak', 'Aplikasi memerlukan izin kamera/galeri untuk melampirkan bukti.');
-      return;
+      if (!perm.granted) {
+        Alert.alert(
+          'Izin Ditolak',
+          'Aplikasi memerlukan izin kamera/galeri untuk melampirkan bukti.',
+        );
+        return;
+      }
+
+      const result = fromCamera
+        ? await ImagePicker.launchCameraAsync({
+            mediaTypes: ['images'],
+            quality: 0.75,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            quality: 0.75,
+          });
+
+      if (result.canceled || !result.assets?.[0]) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      const mime = asset.mimeType || 'image/jpeg';
+      const check = validateAttachmentFile({ mimeType: mime, fileSize: asset.fileSize ?? null });
+      if (!check.valid) {
+        Alert.alert('Foto Tidak Valid', check.message ?? 'Periksa format & ukuran foto.');
+        return;
+      }
+
+      setPhoto({
+        uri: asset.uri,
+        name: asset.fileName || `bukti-${incidentId}-${Date.now()}.jpg`,
+        mimeType: mime,
+      });
+    } catch (err) {
+      Alert.alert(
+        'Gagal Membuka Media',
+        err instanceof Error
+          ? err.message
+          : 'Kamera/galeri tidak tersedia di perangkat atau emulator ini.',
+      );
     }
-
-    const result = fromCamera
-      ? await ImagePicker.launchCameraAsync({
-          mediaTypes: ['images'],
-          quality: 0.75,
-        })
-      : await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ['images'],
-          quality: 0.75,
-        });
-
-    if (result.canceled || !result.assets?.[0]) {
-      return;
-    }
-
-    const asset = result.assets[0];
-    const mime = asset.mimeType || 'image/jpeg';
-    const check = validateAttachmentFile({ mimeType: mime, fileSize: asset.fileSize ?? null });
-    if (!check.valid) {
-      Alert.alert('Foto Tidak Valid', check.message ?? 'Periksa format & ukuran foto.');
-      return;
-    }
-
-    setPhoto({
-      uri: asset.uri,
-      name: asset.fileName || `bukti-${incidentId}-${Date.now()}.jpg`,
-      mimeType: mime,
-    });
   };
 
   const handleSaveOffline = async () => {

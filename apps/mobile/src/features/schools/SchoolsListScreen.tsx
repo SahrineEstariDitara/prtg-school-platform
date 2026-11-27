@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { monitoringApi } from '../../shared/api/endpoints';
 import { getCacheEntry, setCacheEntry } from '../../shared/storage/localDb';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
+import { mergeUniqueById } from '../../shared/hooks/listHelpers';
 import { useSync } from '../offline-sync/SyncContext';
 import {
   AppInput,
@@ -80,12 +81,18 @@ export function SchoolsListScreen() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const fetchingMoreRef = useRef(false);
 
   const fetchSchools = useCallback(
     async (nextPage: number, replace: boolean) => {
       if (replace && nextPage === 1) {
         setRefreshing(true);
+      } else if (!replace && nextPage > 1) {
+        if (fetchingMoreRef.current) return;
+        fetchingMoreRef.current = true;
+        setLoadingMore(true);
       }
       setErrorMsg(null);
       try {
@@ -97,7 +104,7 @@ export function SchoolsListScreen() {
         });
         setTotal(res.pagination.total);
         setPage(nextPage);
-        setSchools((prev) => (replace ? res.items : [...prev, ...res.items]));
+        setSchools((prev) => (replace ? res.items : mergeUniqueById(prev, res.items)));
         if (nextPage === 1 && !debouncedSearch && !statusFilter) {
           await setCacheEntry(CACHE_KEY_SCHOOLS, res.items);
         }
@@ -112,8 +119,10 @@ export function SchoolsListScreen() {
           }
         }
       } finally {
+        fetchingMoreRef.current = false;
         setLoading(false);
         setRefreshing(false);
+        setLoadingMore(false);
       }
     },
     [debouncedSearch, statusFilter],
@@ -132,10 +141,10 @@ export function SchoolsListScreen() {
   );
 
   const handleLoadMore = useCallback(() => {
-    if (!loading && !refreshing && schools.length < total) {
+    if (!loading && !refreshing && !loadingMore && !fetchingMoreRef.current && schools.length < total) {
       fetchSchools(page + 1, false);
     }
-  }, [loading, refreshing, schools.length, total, page, fetchSchools]);
+  }, [loading, refreshing, loadingMore, schools.length, total, page, fetchSchools]);
 
   const renderItem = useCallback(
     ({ item }: { item: SchoolSummary }) => (
@@ -185,6 +194,9 @@ export function SchoolsListScreen() {
           onRefresh={() => fetchSchools(1, true)}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.4}
+          ListFooterComponent={
+            loadingMore ? <ActivityIndicator style={styles.footerLoader} color={colors.primary} /> : null
+          }
           ListEmptyComponent={
             <EmptyState
               icon="school-outline"
@@ -243,5 +255,8 @@ const styles = StyleSheet.create({
   },
   staleTag: {
     marginLeft: spacing.xs,
+  },
+  footerLoader: {
+    paddingVertical: spacing.md,
   },
 });

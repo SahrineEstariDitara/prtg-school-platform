@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { useAuth } from '../auth/AuthContext';
 import { useAppForeground } from '../../shared/hooks/useAppForeground';
 import { useNetworkStatus } from '../../shared/hooks/useNetworkStatus';
+import { cleanupEvidencePhoto } from '../../shared/storage/evidenceStorage';
 import { deleteOfflineDraft, listOfflineDrafts } from '../../shared/storage/localDb';
 import type { OfflineDraftRecord } from '../../shared/types/domain';
 import {
@@ -11,6 +12,8 @@ import {
   type SyncRunSummary,
 } from './syncEngine';
 
+export type SaveDraftInput = Omit<CreateDraftParams, 'userId'>;
+
 export interface SyncContextValue {
   isOnline: boolean;
   drafts: OfflineDraftRecord[];
@@ -19,7 +22,7 @@ export interface SyncContextValue {
   isSyncing: boolean;
   lastSyncSummary: SyncRunSummary | null;
   reloadDrafts: () => Promise<void>;
-  saveDraft: (params: CreateDraftParams) => Promise<OfflineDraftRecord>;
+  saveDraft: (params: SaveDraftInput) => Promise<OfflineDraftRecord>;
   triggerSyncNow: () => Promise<SyncRunSummary>;
   discardDraft: (clientOperationId: string) => Promise<void>;
 }
@@ -27,30 +30,41 @@ export interface SyncContextValue {
 const SyncContext = createContext<SyncContextValue | null>(null);
 
 export function SyncProvider({ children }: { children: React.ReactNode }) {
-  const { status, capabilities } = useAuth();
+  const { status, user, capabilities } = useAuth();
   const net = useNetworkStatus();
   const [drafts, setDrafts] = useState<OfflineDraftRecord[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncSummary, setLastSyncSummary] = useState<SyncRunSummary | null>(null);
   const syncingRef = useRef(false);
 
+  const activeUserId = user?.id;
+
   const reloadDrafts = useCallback(async () => {
+    if (typeof activeUserId !== 'number') {
+      setDrafts([]);
+      return;
+    }
     try {
-      const items = await listOfflineDrafts();
+      const items = await listOfflineDrafts(undefined, activeUserId);
       setDrafts(items);
     } catch {
       // Abaikan jika SQLite belum siap
     }
-  }, []);
+  }, [activeUserId]);
 
   const triggerSyncNow = useCallback(async (): Promise<SyncRunSummary> => {
-    if (syncingRef.current || status !== 'authenticated' || !capabilities.canUseOfflineDrafts) {
+    if (
+      syncingRef.current ||
+      status !== 'authenticated' ||
+      typeof activeUserId !== 'number' ||
+      !capabilities.canUseOfflineDrafts
+    ) {
       return { processed: 0, synced: 0, conflicts: 0, failed: 0 };
     }
     syncingRef.current = true;
     setIsSyncing(true);
     try {
-      const summary = await processOfflineSyncQueue();
+      const summary = await processOfflineSyncQueue(activeUserId);
       setLastSyncSummary(summary);
       await reloadDrafts();
       return summary;
@@ -58,15 +72,16 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       syncingRef.current = false;
       setIsSyncing(false);
     }
-  }, [status, capabilities.canUseOfflineDrafts, reloadDrafts]);
+  }, [status, activeUserId, capabilities.canUseOfflineDrafts, reloadDrafts]);
 
   useEffect(() => {
-    if (status === 'authenticated') {
+    if (status === 'authenticated' && typeof activeUserId === 'number') {
       reloadDrafts();
     } else {
       setDrafts([]);
+      setLastSyncSummary(null);
     }
-  }, [status, reloadDrafts]);
+  }, [status, activeUserId, reloadDrafts]);
 
   // Auto-sync saat kembali online
   useEffect(() => {
@@ -83,20 +98,25 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   });
 
   const saveDraft = useCallback(
-    async (params: CreateDraftParams) => {
-      const created = await queueResponseDraft(params);
+    async (params: SaveDraftInput) => {
+      const created = await queueResponseDraft({
+        ...params,
+        userId: typeof activeUserId === 'number' ? activeUserId : 0,
+      });
       await reloadDrafts();
       return created;
     },
-    [reloadDrafts],
+    [activeUserId, reloadDrafts],
   );
 
   const discardDraft = useCallback(
     async (clientOperationId: string) => {
+      const target = drafts.find((d) => d.client_operation_id === clientOperationId);
+      await cleanupEvidencePhoto(target?.attachment_uri);
       await deleteOfflineDraft(clientOperationId);
       await reloadDrafts();
     },
-    [reloadDrafts],
+    [drafts, reloadDrafts],
   );
 
   const pendingCount = useMemo(

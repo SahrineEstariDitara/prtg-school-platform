@@ -25,8 +25,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const router = useRouter();
   const { status, user, setPendingDeepLink } = useAuth();
   const registeredForUserRef = useRef<number | null>(null);
+  const authStatusRef = useRef(status);
+  authStatusRef.current = status;
 
-  // 1. Setup channel Android & cek cold-start (terminated) notification response
+  // 1. Setup channel Android, cek cold-start (1x mount), dan daftarkan listener tap notifikasi
   useEffect(() => {
     ensureAndroidNotificationChannel().catch(() => undefined);
 
@@ -49,7 +51,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       const route = extractIncidentRouteFromNotificationData(data);
       if (!route) return;
 
-      if (status === 'authenticated') {
+      if (authStatusRef.current === 'authenticated') {
         router.push(route as never);
       } else {
         setPendingDeepLink(route);
@@ -59,7 +61,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     return () => {
       responseSub.remove();
     };
-  }, [router, status, setPendingDeepLink]);
+  }, [router, setPendingDeepLink]);
 
   // 2. Registrasi token perangkat ke backend setelah login berhasil (POST /api/v1/devices/register)
   useEffect(() => {

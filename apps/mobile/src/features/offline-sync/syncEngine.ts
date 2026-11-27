@@ -1,5 +1,6 @@
 import { ApiClientError, generateClientId } from '../../shared/api/client';
 import { incidentsApi, syncApi } from '../../shared/api/endpoints';
+import { cleanupEvidencePhoto, persistEvidencePhoto } from '../../shared/storage/evidenceStorage';
 import {
   insertOfflineDraft,
   listPendingOfflineDrafts,
@@ -15,6 +16,7 @@ export interface SyncRunSummary {
 }
 
 export interface CreateDraftParams {
+  userId: number;
   incidentId: number;
   schoolName: string;
   actionSummary: string;
@@ -25,17 +27,23 @@ export interface CreateDraftParams {
 }
 
 /**
- * Menyimpan draft tindakan teknisi ke SQLite dengan client_operation_id UUID unik (FR-014, TC-12).
+ * Menyimpan draft tindakan teknisi ke SQLite dengan client_operation_id UUID unik
+ * serta menyalin foto lampiran ke penyimpanan persisten (FR-014, TC-12).
  */
 export async function queueResponseDraft(params: CreateDraftParams): Promise<OfflineDraftRecord> {
   const clientOperationId = generateClientId('op');
+  const persistentUri = params.attachmentUri
+    ? await persistEvidencePhoto(params.attachmentUri, clientOperationId, params.attachmentMime)
+    : null;
+
   return insertOfflineDraft({
+    userId: params.userId,
     clientOperationId,
     incidentId: params.incidentId,
     schoolName: params.schoolName,
     actionSummary: params.actionSummary.trim(),
     resultNotes: params.resultNotes?.trim() || null,
-    attachmentUri: params.attachmentUri ?? null,
+    attachmentUri: persistentUri,
     attachmentMime: params.attachmentMime ?? null,
     attachmentName: params.attachmentName ?? null,
     syncStatus: 'pending_sync',
@@ -43,15 +51,10 @@ export async function queueResponseDraft(params: CreateDraftParams): Promise<Off
 }
 
 /**
- * Memproses antrean draft offline secara idempoten ke server.
- * - Draft tanpa foto: dikirim batch ke POST /api/v1/sync/operations.
- * - Draft dengan foto lokal: dikirim ke POST /api/v1/incidents/{id}/responses (multipart)
- *   membawa client_operation_id yang sama agar tetap idempoten.
- * - Jika server mengembalikan conflict (incident closed/reassigned), draft TIDAK dihapus,
- *   melainkan ditandai `conflict` beserta pesan server untuk rekonsiliasi manual (ADR-013).
+ * Memproses antrean draft offline milik user aktif secara idempoten ke server.
  */
-export async function processOfflineSyncQueue(): Promise<SyncRunSummary> {
-  const pending = await listPendingOfflineDrafts();
+export async function processOfflineSyncQueue(userId?: number): Promise<SyncRunSummary> {
+  const pending = await listPendingOfflineDrafts(userId);
   if (pending.length === 0) {
     return { processed: 0, synced: 0, conflicts: 0, failed: 0 };
   }
@@ -140,6 +143,7 @@ export async function processOfflineSyncQueue(): Promise<SyncRunSummary> {
         conflictReason: null,
         serverResponseId: typeof res.id === 'number' ? res.id : null,
       });
+      await cleanupEvidencePhoto(draft.attachment_uri);
       synced += 1;
     } catch (err) {
       if (err instanceof ApiClientError && (err.status === 409 || err.status === 403)) {

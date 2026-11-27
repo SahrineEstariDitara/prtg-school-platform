@@ -40,12 +40,23 @@ export function VerificationPanel({ incident, isOnline, onUpdated }: Verificatio
         approveNotes.trim() || undefined,
       );
       const nextStatus = String(res.incident_status ?? 'awaiting_recovery');
+      const recheckInfo =
+        res.recheck && typeof res.recheck === 'object'
+          ? (res.recheck as { error_message?: string | null; is_valid_response?: boolean })
+          : null;
+      const recheckErr =
+        typeof recheckInfo?.error_message === 'string' && recheckInfo.error_message.trim()
+          ? recheckInfo.error_message.trim()
+          : null;
+
       const recheckMsg =
         typeof res.message === 'string'
           ? res.message
           : nextStatus === 'resolved'
             ? 'Semua sensor wajib terverifikasi normal dan incident ditutup (resolved).'
-            : `Verifikasi disetujui. Status kini '${nextStatus}' — menunggu konfirmasi stabil PRTG (${requiredN}x normal).`;
+            : recheckErr
+              ? `Verifikasi disetujui, status kini '${nextStatus}'. Recheck ke-1 belum valid: ${recheckErr}`
+              : `Verifikasi disetujui. Status kini '${nextStatus}' — menunggu konfirmasi stabil PRTG (${requiredN}x normal).`;
       Alert.alert('Hasil Verifikasi & PRTG Recheck', recheckMsg);
       setApproveNotes('');
       await onUpdated();

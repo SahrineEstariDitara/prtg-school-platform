@@ -324,6 +324,7 @@ export interface AuditLogItem {
 
 export interface OfflineDraftRecord {
   id: number;
+  user_id: number;
   client_operation_id: string;
   incident_id: number;
   school_name: string;

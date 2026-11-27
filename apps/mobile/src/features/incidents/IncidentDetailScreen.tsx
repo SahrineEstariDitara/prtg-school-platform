@@ -46,6 +46,8 @@ export function IncidentDetailScreen({ incidentId }: { incidentId: number }) {
 
   const cacheKey = `incident_detail_${incidentId}`;
 
+  const activeUserId = user?.id;
+
   const loadData = useCallback(
     async (isRefresh = false) => {
       if (isRefresh) setRefreshing(true);
@@ -56,7 +58,7 @@ export function IncidentDetailScreen({ incidentId }: { incidentId: number }) {
         const [incDetail, incHist, drafts] = await Promise.all([
           incidentsApi.detail(incidentId),
           incidentsApi.history(incidentId),
-          listOfflineDrafts(incidentId),
+          listOfflineDrafts(incidentId, activeUserId),
         ]);
         setDetail(incDetail);
         setHistory(incHist.items);
@@ -65,7 +67,7 @@ export function IncidentDetailScreen({ incidentId }: { incidentId: number }) {
       } catch (err) {
         const [cached, drafts] = await Promise.all([
           getCacheEntry<{ detail: IncidentDetail; history: IncidentHistoryItem[] }>(cacheKey),
-          listOfflineDrafts(incidentId),
+          listOfflineDrafts(incidentId, activeUserId),
         ]);
         setLocalDrafts(drafts);
         if (cached) {
@@ -79,7 +81,7 @@ export function IncidentDetailScreen({ incidentId }: { incidentId: number }) {
         setRefreshing(false);
       }
     },
-    [incidentId, cacheKey],
+    [incidentId, cacheKey, activeUserId],
   );
 
   useEffect(() => {

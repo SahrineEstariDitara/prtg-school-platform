@@ -37,7 +37,7 @@ const DraftRow = React.memo(function DraftRow({
   );
 
   return (
-    <Card style={[styles.card, draft.sync_status === 'conflict' ? styles.conflictBorder : null]}>
+    <Card style={draft.sync_status === 'conflict' ? styles.cardConflict : styles.card}>
       <View style={styles.rowBetween}>
         <AppText variant="bodyBold" style={styles.flexOne}>
           {draft.school_name} (#{draft.incident_id})
@@ -200,7 +200,10 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.xs,
   },
-  conflictBorder: {
+  cardConflict: {
+    marginBottom: spacing.sm,
+    padding: spacing.md,
+    gap: spacing.xs,
     borderColor: colors.offlineBorder,
     backgroundColor: '#FFF5F5',
   },

@@ -36,6 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [pendingDeepLink, setPendingDeepLink] = useState<string | null>(null);
 
   const handleForcedLogout = useCallback(() => {
+    clearAllCache().catch(() => undefined);
     setUser(null);
     setIsOfflineSession(false);
     setStatus('unauthenticated');

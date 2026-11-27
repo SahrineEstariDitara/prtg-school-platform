@@ -26,17 +26,18 @@ describe('Offline Sync Engine (FR-014, FR-015, ADR-013, TC-12)', () => {
     jest.clearAllMocks();
   });
 
-  test('queueResponseDraft creates draft with unique client_operation_id', async () => {
+  test('queueResponseDraft creates user-scoped draft with unique client_operation_id', async () => {
     (localDb.insertOfflineDraft as jest.Mock).mockImplementation(async (input) => ({
       id: 1,
+      user_id: input.userId,
       client_operation_id: input.clientOperationId,
       incident_id: input.incidentId,
       school_name: input.schoolName,
       action_summary: input.actionSummary,
       result_notes: input.resultNotes ?? null,
-      attachment_uri: null,
-      attachment_mime: null,
-      attachment_name: null,
+      attachment_uri: input.attachmentUri ?? null,
+      attachment_mime: input.attachmentMime ?? null,
+      attachment_name: input.attachmentName ?? null,
       sync_status: 'pending_sync',
       conflict_reason: null,
       server_response_id: null,
@@ -45,20 +46,25 @@ describe('Offline Sync Engine (FR-014, FR-015, ADR-013, TC-12)', () => {
     }));
 
     const draft = await queueResponseDraft({
+      userId: 42,
       incidentId: 55,
       schoolName: 'SMAN 1 Yogyakarta',
       actionSummary: 'Ganti patch cord FO',
     });
 
+    expect(draft.user_id).toBe(42);
     expect(draft.client_operation_id).toMatch(/^op-/);
     expect(draft.sync_status).toBe('pending_sync');
-    expect(localDb.insertOfflineDraft).toHaveBeenCalledTimes(1);
+    expect(localDb.insertOfflineDraft).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 42, incidentId: 55 }),
+    );
   });
 
-  test('processOfflineSyncQueue marks synced items and retains conflict drafts without deletion', async () => {
+  test('processOfflineSyncQueue scopes pending lookup by userId and retains conflict drafts', async () => {
     const drafts: OfflineDraftRecord[] = [
       {
         id: 1,
+        user_id: 42,
         client_operation_id: 'op-uuid-1',
         incident_id: 10,
         school_name: 'SMAN 1 Bantul',
@@ -75,6 +81,7 @@ describe('Offline Sync Engine (FR-014, FR-015, ADR-013, TC-12)', () => {
       },
       {
         id: 2,
+        user_id: 42,
         client_operation_id: 'op-uuid-2',
         incident_id: 11,
         school_name: 'SMKN 2 Depok',
@@ -108,8 +115,9 @@ describe('Offline Sync Engine (FR-014, FR-015, ADR-013, TC-12)', () => {
       ],
     });
 
-    const summary = await processOfflineSyncQueue();
+    const summary = await processOfflineSyncQueue(42);
 
+    expect(localDb.listPendingOfflineDrafts).toHaveBeenCalledWith(42);
     expect(summary).toEqual({
       processed: 2,
       synced: 1,

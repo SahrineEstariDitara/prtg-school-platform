@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { adminApi } from '../../shared/api/endpoints';
 import { ApiClientError } from '../../shared/api/client';
 import { validateRoleRegionScope } from '../../shared/validation/validators';
@@ -52,6 +53,7 @@ const UserRow = React.memo(function UserRow({ user, onEdit }: UserRowProps) {
 });
 
 export function UsersAdminScreen() {
+  const insets = useSafeAreaInsets();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [roles, setRoles] = useState<RoleRef[]>([]);
   const [regions, setRegions] = useState<RegionRef[]>([]);
@@ -212,7 +214,14 @@ export function UsersAdminScreen() {
       />
 
       <Modal visible={modalOpen} animationType="slide" onRequestClose={() => setModalOpen(false)}>
-        <ScrollView style={styles.modalRoot} contentContainerStyle={styles.modalContent}>
+        <ScrollView
+          style={styles.modalRoot}
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={[
+            styles.modalContent,
+            { paddingTop: Math.max(insets.top, spacing.xl), paddingBottom: Math.max(insets.bottom, spacing.xxl) },
+          ]}
+        >
           <AppText variant="h2">
             {editingUser ? `Edit User @${editingUser.username}` : 'Tambah Pengguna Baru'}
           </AppText>

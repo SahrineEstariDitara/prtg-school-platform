@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from './AuthContext';
 import { AppButton, AppInput, AppText, Card } from '../../shared/components';
 import { ApiClientError, getApiBaseUrl } from '../../shared/api/client';
@@ -10,6 +11,7 @@ import { colors, radius, spacing } from '../../shared/theme/tokens';
 
 export function LoginScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { login, consumePendingDeepLink } = useAuth();
 
   const [username, setUsername] = useState('');
@@ -47,7 +49,7 @@ export function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.root}
+      style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.container}>
